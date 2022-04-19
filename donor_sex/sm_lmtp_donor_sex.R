@@ -1,9 +1,5 @@
 #############################
-# TMLE for donor sex and age
-# GUIDE
-##https://cran.r-project.org/web/packages/lmtp/vignettes/getting-started.html#modified-treatment-policies
-
-#https://rdrr.io/cran/lmtp/src/R/checks-warnings.R
+# TMLE for donor sex
 
 args <- commandArgs(trailingOnly=TRUE)
 
@@ -16,11 +12,6 @@ library(progressr)
 library(broom)
 
 setwd("/users/data/projects/deep_phenotyping/TMLE_donor_sex_and_age/")
-
-#mainDir = "/users/data/projects/deep_phenotyping/TMLE_donor_sex_and_age/"
-#outDir = "TMLE/donor_sex/results/2022-01-06/"
-#dir.create(file.path(mainDir, outDir), showWarnings = FALSE)
-
 
 # Testing
 # infile = "/data/projects/deep_phenotyping/transfusions_bth_simple/data/processed/data_longitudinal_inclAcute_mortality.tsv"
