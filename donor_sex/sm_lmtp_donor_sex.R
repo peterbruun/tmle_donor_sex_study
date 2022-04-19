@@ -6,7 +6,7 @@ args <- commandArgs(trailingOnly=TRUE)
 library("future")
 library(SuperLearner)
 library(lmtp)
-library(hal9001)
+#library(hal9001)
 library(tidyverse)
 library(progressr)
 library(broom)
@@ -50,10 +50,7 @@ data_bootstrap <- data_bootstrap %>% arrange(patient_cpr_enc,time)
 # Define exposure variable
 data_bootstrap["trt"] <- data_bootstrap[expo_var]
 
-# count variable
-#data_bootstrap["exposure"] <- data_bootstrap["male_donor"]
-# Set exposure to ratio between male/n_trans and -1 on days where no transfusions are received.
-#data_bootstrap <- data_bootstrap %>% mutate(exposure = if_else(n_transfusions>0, male_donor/n_transfusions, -1))
+
 # Set to 50/50 on days where no transfusions where received
 data_bootstrap <- data_bootstrap %>% mutate(exposure = if_else(n_transfusions>0, trt/n_transfusions, 0.5))
 
@@ -63,9 +60,6 @@ data_bootstrap["lag1_total_transfusions"] = data_bootstrap["total_transfusions"]
 data_bootstrap <- data_bootstrap %>% select(-c(total_transfusions))
 
 
-# data_bootstrap <- data_bootstrap %>% 
-#                    dplyr::select(c(patient_cpr_enc,patient_cpr_sex,event,time,exposure,male_donor,n_transfusions,lag1_total_transfusions,))
-
 # Select columns to use
 data_bootstrap <- data_bootstrap %>% 
                    dplyr::select(c(patient_cpr_enc,event,time,exposure,donor_age_below_40,n_transfusions,lag1_total_transfusions,
@@ -74,10 +68,7 @@ data_bootstrap <- data_bootstrap %>%
 
 
 
-#data_bootstrap <- model.matrix(data_bootstrap)
 
-#one approach it to index with the $ sign and the as.factor function
-#AB0_patient,Rhesus_patient,hospital_navn
 data_bootstrap$AB0_patient <- as.factor(data_bootstrap$AB0_patient)
 data_bootstrap$Rhesus_patient <- as.factor(data_bootstrap$Rhesus_patient)
 data_bootstrap$hospital_navn <- as.factor(data_bootstrap$hospital_navn)
@@ -110,13 +101,6 @@ data_bootstrap <- data_bootstrap %>% select(-c(
 Y <- paste0("event_", 0:follow_up)
 data_bootstrap <- event_locf(data_bootstrap, Y)
 
-#data_bootstrap %>% filter(event_3 == 1) %>% select(Y)
-
-# Carry event forward - alternative version
-# Y <- paste0("event_", 0:follow_up)
-# data_bootstrap <- data_bootstrap %>%
-#   mutate_at(Y, ~replace_na(., 1))
-
 
 ## --- TMLE --- ##
 
@@ -140,19 +124,6 @@ female_donors_only <- function(data, trt) {
   ) )
 }
 
-# Test treatment strategies
-# test <- male_donors_only(data_male_recipients,"exposure_1")
-# test2 <- data_male_recipients %>% select(c(exposure_1,n_transfusions_1))
-# test2["updated_treat"] <- test
-
-
-# For count treatment
-# male_donors_only <- function(data, trt) {
-#   (data[[trt]] = data[[sub("exposure", "n_transfusions", trt)]])
-# }
-# female_donors_only <- function(data, trt) {
-#   (data[[trt]] = 0)
-# }
 
 # Define covariates
 # Time-varying covariates
@@ -162,8 +133,6 @@ for (i in 1:follow_up+1) {
 		# Non time-varying year and month
 		columns <- c("donor_age_below_40_XX","n_transfusions_XX","lag1_total_transfusions_XX","patient_charlson_score_XX",
 			"hospital_navn_XX")
-		# Time-varying year and month    
-		#columns <- c("donor_age_below_40_XX","n_transfusions_XX","lag1_total_transfusions_XX","patient_charlson_score_XX","Trans_year_XX","sin_month_XX","cos_month_XX","hospital_navn_XX")
     L[[i]] = str_replace(columns,"XX",as.character(i-1))
 }
 
@@ -176,15 +145,12 @@ C <- paste0("C_", 0:follow_up)
 # Baseline covariates
 W <- c("AB0_patient","Rhesus_patient","patient_age_trans",
 			 "Trans_year_0","sin_month_0","cos_month_0")
-# Time-varying year and month 
-#W <- c("AB0_patient","Rhesus_patient","patient_age_trans")
+
+
 tune = list(ntrees = c(1000), max_depth = c(2, 4),
             shrinkage = c(0.1, 0.01),minobspernode = c(10),nthread = c(threads-3))
 xgb_grid = create.SL.xgboost(tune = tune)
 elastic_net = create.Learner("SL.glmnet", tune = list(alpha = c(0,0.5,1)))
-
-# glm.interaction takes way to long!
-#lrnrs <- c("SL.glm","SL.glm.interaction","SL.glmnet",elastic_net$names,"SL.earth",rf_grid$names, xgb_grid$names)
 
 
 lrnrs <- c("SL.glm","SL.glmnet","SL.earth",xgb_grid$names)
